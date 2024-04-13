@@ -1,4 +1,5 @@
 import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:google_mlkit_text_recognition/google_mlkit_text_recognition.dart';
 import 'package:image_picker/image_picker.dart';
@@ -13,8 +14,9 @@ class OCRScreen extends StatefulWidget {
 class _OCRScreenState extends State<OCRScreen> {
   File? _file;
   String? _extractedText;
-  String? _nrc; // Variable to store extracted student ID
-  final _nrcController = TextEditingController(); // Controller for student ID
+  final _studentIdController = TextEditingController();
+  String?
+      _potentialRegistrationNumber; // Variable to store potential registration number
 
   Future<void> _pickImage(ImageSource source) async {
     final imagePicker = await ImagePicker().pickImage(source: source);
@@ -33,23 +35,26 @@ class _OCRScreenState extends State<OCRScreen> {
         await textRecognizer.processImage(inputImage);
     String extractedText = recognizedText.text;
 
+    // Update state with extracted text and find potential registration number
     setState(() {
       _extractedText = extractedText;
-
-      // Extract and store nrc ID (I'm specifically interested in the 3rd line
-      //of the extracted text. This is not ideal if we factor in that the MLKit
-      //dependency can not always have the 3rd text as nrc id)
-      final lines = _extractedText!.split('\n');
-      if (lines.length >= 3) {
-        _nrc = lines[2];
-        _nrcController.text = _nrc!;
-      } else {
-        _nrc = null;
-        _nrcController.text = "";
-      }
+      _potentialRegistrationNumber =
+          _findPotentialRegistrationNumber(extractedText);
+      _studentIdController.text = _potentialRegistrationNumber!;
     });
 
     print(extractedText); // You can keep this for debugging purposes
+  }
+
+  String? _findPotentialRegistrationNumber(String text) {
+    final lines = text.split('\n');
+    for (var line in lines) {
+      if (line.contains(RegExp(r'\d'))) {
+        // Check if line has at least one digit
+        return line;
+      }
+    }
+    return null; // No potential registration number found
   }
 
   @override
@@ -69,7 +74,7 @@ class _OCRScreenState extends State<OCRScreen> {
             ),
             const Text('Student ID:'),
             TextFormField(
-              controller: _nrcController,
+              controller: _studentIdController,
               decoration: const InputDecoration(
                 hintText: 'Enter or edit Student ID',
               ),
